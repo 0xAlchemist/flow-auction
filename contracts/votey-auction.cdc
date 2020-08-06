@@ -32,6 +32,9 @@ pub contract VoteyAuction {
         pub var auctionQueue: @{UInt64: NonFungibleToken.NFT}
         pub var currentAuctionItem: @[NonFungibleToken.NFT]
 
+        // Current Price
+        pub var currentAuctionPrice: UFix64
+
         // Auction Queue Meta Data
         pub var auctionQueuePrices: {UInt64: UFix64}
         pub var auctionQueueVotes: {UInt64: UInt64}
@@ -55,6 +58,7 @@ pub contract VoteyAuction {
         ) {
             self.auctionQueue <- {}
             self.currentAuctionItem <- []
+            self.currentAuctionPrice = UFix64(0)
             self.auctionQueuePrices = {}
             self.auctionQueueVotes = {}
             self.minimumBidIncrement = minimumBidIncrement
@@ -94,6 +98,110 @@ pub contract VoteyAuction {
         // getAuctionQueuePrices 
         pub fun getAuctionQueuePrices(): {UInt64: UFix64} {
             return self.auctionQueuePrices
+        }
+
+        // startAuction removes the token with the highest ID number from the
+        // auction queue and puts it up for auction
+        pub fun startAuction() {
+            self.updateCurrentAuctionItem()
+        }
+
+        // updateCurrentAuctionItem adds the next token from the auction queue
+        // to the currentAuctionItem array
+        pub fun updateCurrentAuctionItem() {
+            pre {
+                self.currentAuctionItem.length == 0:
+                "can not have more than one active auction item"
+            }
+            // get the next token ID
+            var tokenID = self.getNextTokenID()
+            // update the auction start price
+            self.currentAuctionPrice = self.auctionQueuePrices[tokenID]??
+                panic("no token in the auction queue")
+            // remove the next token from the auction queue
+            let token <- self.getTokenFromAuctionQueue(tokenID: tokenID)
+            // append the token to the currentAuctionItem array
+            self.currentAuctionItem.append(<-token)
+        }
+
+        // getNextTokenID returns the token ID with the highest vote count, if any.
+        // Otherwise it returns the tokenID with the highest ID number
+        pub fun getNextTokenID(): UInt64 {
+            var tokenID = self.getHighestVoteCountID()
+
+            if tokenID == nil {
+                tokenID = self.getHighestTokenID()
+            }
+
+            return tokenID!
+        }
+
+        // getHighestVoteCountID returns the id for the token with the
+        // highest vote count, or nil if all votes equal zero
+        pub fun getHighestVoteCountID(): UInt64? {
+            pre {
+                self.auctionQueue.keys.length > 0:
+                    "there are no tokens in the auction queue"
+            }
+
+            var tokenID: UInt64? = nil
+            var highestCount: UInt64 = 0
+            var counter: UInt64 = 0
+
+            // while there are still tokens to loop through...
+            while counter < UInt64(self.auctionQueueVotes.keys.length) {
+                // ... if the vote count is higher than the current highest count...
+                if self.auctionQueueVotes[counter]! > highestCount {
+                    // ... update the current highest count for the next iteration
+                    highestCount = self.auctionQueueVotes[self.auctionQueueVotes.keys[counter]]
+                        ?? panic("auction queue is out of sync")
+                    // ... set the token ID to the token with the highest count
+                    tokenID = self.auctionQueueVotes.keys[counter]
+                }
+            }
+
+            // return the token ID with the most votes (or nil)
+            return tokenID
+        }
+
+        // getHighestTokenID returns the highest token ID in the auction queue
+        pub fun getHighestTokenID(): UInt64 {
+            pre {
+                self.auctionQueue.keys.length > 0:
+                    "there are no tokens in the auction queue"
+            }
+
+            // set the initial tokenID to zero (no token ids will be lower than this)
+            var tokenID: UInt64 = 0
+
+            // for each token ID in the auction queue...
+            for id in self.auctionQueue.keys {
+                // ...if the token ID is greater than the
+                // ID we currently have stored
+                if id > tokenID {
+                    //...update tokenID to the higher ID
+                    tokenID = id
+                }
+            }
+            
+            return tokenID
+        }
+
+        // getTokenFromAuctionQueue removes the token from the auction queue
+        // and returns it to the caller
+        pub fun getTokenFromAuctionQueue(tokenID: UInt64): @NonFungibleToken.NFT {
+            pre {
+                self.auctionQueue.keys.length > 0:
+                    "there are no tokens in the auction queue"
+            }
+
+            // remove vote and prices data
+            self.auctionQueuePrices[tokenID] = nil
+            self.auctionQueueVotes[tokenID] = nil
+
+            // withdraw token and return it to the caller
+            let nextToken <- self.auctionQueue.remove(key: tokenID)!
+            return <- nextToken
         }
 
         destroy() {
