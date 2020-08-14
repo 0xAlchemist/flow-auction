@@ -128,7 +128,12 @@ pub contract VoteyAuction {
                 //send the NFT to the bidders collection
                 var nftCap= bid.nftCollection  
                 log(nftCap)
+                log("Capability<&{NonFungibleToken.CollectionPublic}> is the type of the capability logged above")
+                var check= nftCap.check()
+                log("does check() on this capability work?")
+                log(check)
                 var collectionPublic=nftCap.borrow()
+                log("what is the result after borrow?")
                 log(collectionPublic)
                 //TODO: Why is that nil
                 /* 
