@@ -36,8 +36,6 @@ transaction {
         let auctionCollectionRef = account.borrow<&VoteyAuction.AuctionCollection>(from: /storage/NFTAuction)!
 
         for id in collectionIDs {
-            // Create an empty bid Vault for the auction
-            let bidVault <- DemoToken.createEmptyVault()
 
             // withdraw the NFT from the collection that you want to sell
             // and move it into the transaction's context
@@ -49,7 +47,6 @@ transaction {
                 minimumBidIncrement: UFix64(5),
                 auctionLengthInBlocks: UInt64(2),
                 startPrice: UFix64(10),
-                bidVault: <-bidVault,
                 collectionCap: publicCollectionCap,
                 vaultCap: vaultCap
             )
