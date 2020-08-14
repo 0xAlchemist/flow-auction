@@ -2,10 +2,11 @@
 // and publishes a capability to the collection in storage
 
 import FungibleToken from 0xee82856bf20e2aa6
-import NonFungibleToken from 0x01cf0e2f2f715450
+//import NonFungibleToken from 0x01cf0e2f2f715450
 import DemoToken from 0x179b6b1cb6755e31
-import Rocks from 0xf3fcd2c1a78f5eee
+//import Rocks from 0xf3fcd2c1a78f5eee
 import VoteyAuction from 0xe03daebed8ca0615
+
 // Contract Deployment:
 // Acct 1 - 0x01cf0e2f2f715450 - NonFungibleToken.cdc
 // Acct 2 - 0x179b6b1cb6755e31 - DemoToken.cdc
@@ -18,17 +19,11 @@ transaction {
         let receiver = account.getCapability<&DemoToken.Vault{FungibleToken.Receiver}>(/public/DemoTokenVault)??
             panic("Account 1 has no DemoToken Vault capability")
 
-        // get the public Capability for the signer's NFT collection (for the auction)
-        let publicCollectionCap = account.getCapability
-        <&NonFungibleToken.Collection{NonFungibleToken.CollectionPublic}>
-            (/public/RockCollection)?? 
-            panic("Unable to borrow a reference to the NFT collection")
-
+      
         // create a new sale object     
         // initializing it with the reference to the owner's Vault
         let auction <- VoteyAuction.createAuctionCollection(
-            ownerNFTCollectionCapability: publicCollectionCap,
-            ownerVaultCapability: receiver,
+            marketplaceVault: receiver
         )
 
         // store the sale resource in the account for storage

@@ -28,7 +28,8 @@ pub contract VoteyAuction {
 
     pub resource AuctionItem {
 
-        pub(set) var NFT: @NonFungibleToken.NFT?
+
+        pub(set) var items: @{UInt64:NonFungibleToken.NFT}
         pub let bidVault: @FungibleToken.Vault
         pub (set) var meta: ItemMeta
 
@@ -37,7 +38,7 @@ pub contract VoteyAuction {
             bidVault: @FungibleToken.Vault,
             meta: ItemMeta
         ) {
-            self.NFT <- NFT
+            self.items <- { UInt64(1) : <- NFT}
             self.bidVault <- bidVault
             self.meta = meta
 
@@ -49,8 +50,7 @@ pub contract VoteyAuction {
         }
 
         pub fun withdrawNFT(): @NonFungibleToken.NFT {
-            let NFT <- self.NFT <- nil
-            return <- NFT!
+            return <- self.items.remove(key:1)!
         }
 
         access(contract) fun updateRecipientVaultCap(cap: Capability<&AnyResource{FungibleToken.Receiver}>) {
@@ -83,7 +83,7 @@ pub contract VoteyAuction {
         }
 
         destroy() {
-            self.returnOwnerNFT(token: <-self.NFT!)
+            self.returnOwnerNFT(token: <-self.withdrawNFT())
             self.releaseBidderTokens()
             destroy self.bidVault
         }
@@ -143,18 +143,26 @@ pub contract VoteyAuction {
     pub resource AuctionCollection: AuctionPublic {
 
         // Auction Items
-        pub var auctionItems: @{UInt64: AuctionItem}
+        pub let auctionItems: @{UInt64: AuctionItem}
         
+        pub let marketplaceVault: Capability<&AnyResource{FungibleToken.Receiver}>
+
         init(
-            ownerNFTReceiverCap: Capability<&AnyResource{NonFungibleToken.CollectionPublic}>,
-            ownerVaultCapability: Capability<&AnyResource{FungibleToken.Receiver}>
+            marketplaceVault: Capability<&AnyResource{FungibleToken.Receiver}>
         ) {
+            self.marketplaceVault=marketplaceVault
             self.auctionItems <- {}
         }
 
         // addTokenToauctionItems adds an NFT to the auction items and sets the meta data
         // for the auction item
-        pub fun addTokenToAuctionItems(token: @NonFungibleToken.NFT, minimumBidIncrement: UFix64, auctionLengthInBlocks: UInt64, startPrice: UFix64, bidVault: @FungibleToken.Vault, collectionCap: Capability<&{NonFungibleToken.CollectionPublic}>, vaultCap: Capability<&{FungibleToken.Receiver}>) {
+        pub fun createAuction(
+            token: @NonFungibleToken.NFT, 
+            minimumBidIncrement: UFix64, 
+            auctionLengthInBlocks: UInt64, 
+            startPrice: UFix64, 
+            collectionCap: Capability<&{NonFungibleToken.CollectionPublic}>, 
+            vaultCap: Capability<&{FungibleToken.Receiver}>) {
             
             
             // create a new auction meta resource
@@ -170,7 +178,7 @@ pub contract VoteyAuction {
             // create a new auction items resource container
             let item <- create AuctionItem(
                 NFT: <-token,
-                bidVault: <-bidVault,
+                bidVault: <- create FungibleToken.Vault(),
                 meta: meta
             )
 
@@ -273,8 +281,8 @@ pub contract VoteyAuction {
 
         // placeBid sends the bidder's tokens to the bid vault and updates the
         // currentPrice of the current auction item
-        pub fun placeBid(id: UInt64, bidTokens: @FungibleToken.Vault, vaultCap: Capability<&AnyResource{FungibleToken.Receiver}>, collectionCap: Capability<&AnyResource{NonFungibleToken.CollectionPublic}>) 
-            {
+        pub fun placeBid(id: UInt64, bidTokens: @FungibleToken.Vault, vaultCap: Capability<&AnyResource{FungibleToken.Receiver}>, collectionCap: Capability<&AnyResource{NonFungibleToken.CollectionPublic}>
+            ) {
             pre {
                 self.auctionItems[id] != nil:
                     "NFT doesn't exist"
@@ -335,7 +343,6 @@ pub contract VoteyAuction {
             let oldItem <- self.auctionItems[id] <- nil
             destroy oldItem
         }
-
         destroy() {
             for id in self.auctionItems.keys {
                 self.returnAuctionItemToOwner(id)
@@ -347,13 +354,11 @@ pub contract VoteyAuction {
 
     // createAuctionCollection returns a new AuctionCollection resource to the caller
     pub fun createAuctionCollection(
-        ownerNFTCollectionCapability: Capability<&AnyResource{NonFungibleToken.CollectionPublic}>,
-        ownerVaultCapability: Capability<&AnyResource{FungibleToken.Receiver}>,
+        marketplaceVault: Capability<&AnyResource{FungibleToken.Receiver}>,
     ): @AuctionCollection {
 
         let auctionCollection <- create AuctionCollection(
-            ownerNFTReceiverCap: ownerNFTCollectionCapability,
-            ownerVaultCapability: ownerVaultCapability
+            marketplaceVault: marketplaceVault
         )
 
         return <- auctionCollection
