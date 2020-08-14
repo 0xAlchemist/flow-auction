@@ -62,7 +62,7 @@ pub contract VoteyAuction {
         pub let ownerVaultCap: Capability<&{FungibleToken.Receiver}>
 
         init(
-            NFT: @NonFungibleToken.NFT,
+            nfts: @{UInt64:NonFungibleToken.NFT},
             minimumBidIncrement: UFix64,
             auctionStartBlock: UInt64,
             auctionLengthInBlocks: UInt64,
@@ -70,7 +70,7 @@ pub contract VoteyAuction {
             ownerCollectionCap: Capability<&{NonFungibleToken.CollectionPublic}>,
             ownerVaultCap: Capability<&{FungibleToken.Receiver}>
         ) {
-            self.items <- { UInt64(1) : <- NFT}
+            self.items <- nfts
             self.escrow <- DemoToken.createEmptyVault()
             self.auctionStartBlock=getCurrentBlock().height
             self.auctionLengthInBlocks=auctionLengthInBlocks
@@ -85,7 +85,7 @@ pub contract VoteyAuction {
 
         pub fun isAuctionExpired() : Bool {
 
-             let auctionLength = self.auctionLengthInBlocks
+            let auctionLength = self.auctionLengthInBlocks
             let startBlock = self.auctionStartBlock 
             let currentBlock = getCurrentBlock()
             
@@ -94,10 +94,6 @@ pub contract VoteyAuction {
             } else {
                 return false
             }
-        }
-
-        pub fun depositBidTokens(vault: @FungibleToken.Vault) {
-            self.escrow.deposit(from: <-vault)
         }
 
         pub fun settleAuction() {
@@ -119,13 +115,15 @@ pub contract VoteyAuction {
             // todo just mark it as settled
         }
 
-        pub fun withdrawNFT(): @NonFungibleToken.NFT {
-            return <- self.items.remove(key:1)!
-        }
-
         pub fun exchangeTokens() {
+             log(&self as &AuctionItem)
              if let bid= self.currentBid {
                 //send the NFT to the bidders collection
+
+                log(self.ownerCollectionCap)
+                log(self.ownerCollectionCap.check())
+                log(self.ownerCollectionCap.borrow())
+
                 var nftCap= bid.nftCollection  
                 log(nftCap)
                 log("Capability<&{NonFungibleToken.CollectionPublic}> is the type of the capability logged above")
@@ -135,9 +133,11 @@ pub contract VoteyAuction {
                 var collectionPublic=nftCap.borrow()
                 log("what is the result after borrow?")
                 log(collectionPublic)
+
+//                self.transferEscrow(self.ownerVaultCap)
                 //TODO: Why is that nil
+                //self.transferNFTS(nftCap)
                 /* 
-                collectionPublic.deposit(token: <- itemRef.withdrawNFT())
 
                 //withdraw the escrowed money and send it to the ower
                 //TODO: Marketplace cut, artist cut?
@@ -150,43 +150,28 @@ pub contract VoteyAuction {
 
             }
         }
-        access(contract) fun returnOwnerNFT(token: @NonFungibleToken.NFT) {
-            // borrow a reference to the owner's NFT receiver
-            let NFTReceiver = self.ownerCollectionCap.borrow()!
 
-            // deposit the token into the owner's collection
-            NFTReceiver.deposit(token: <-token)
+        pub fun transferNFTS(_ capability: Capability<&{NonFungibleToken.CollectionPublic}>){
+             let collection= capability.borrow()!
+             for id in self.items.keys {
+                 collection.deposit(token: <- self.items.remove(key: id)!)
+             }
         }
 
-        access(contract) fun releaseBidderTokens() {
-            pre {
-                self.currentBid?.nftCollection != nil: "There is no recipient to release the tokens to"
-            }
-
-            // withdraw the entire token balance from escrow
+        pub fun transferEscrow(_ capability: Capability<&{FungibleToken.Receiver}>) {
             let bidTokens <- self.escrow.withdraw(amount: self.escrow.balance)
-
-            // borrow a reference to the bidder's Vault receiver
-            let vaultRef = self.currentBid!.paybackVault.borrow()
-            
-            // return the bidTokens to the bidder's Vault
-            vaultRef!.deposit(from:<-bidTokens)
+            let vaultRef = capability.borrow()!
+            vaultRef.deposit(from:<-bidTokens)
         }
+
 
          pub fun returnAuctionItemToOwner() {
             
-            let ownerCollectionRef = self.ownerCollectionCap.borrow() ?? panic("Could not borrow ownerCollectionCap")
-            
-            // release the bidder's tokens
-            self.releaseBidderTokens()
+            //release the escrow tokens back to the bidder
+            self.transferEscrow(self.currentBid!.paybackVault)
 
             // withdraw the NFT from the auction collection
-            let NFT <-self.withdrawNFT()
-            
-            // deposit the NFT into the owner's collection
-            ownerCollectionRef.deposit(token:<- NFT)
-
-            // clear the NFT's meta data
+            self.transferNFTS(self.ownerCollectionCap)
         }
 
         pub fun bid(bidTokens: @FungibleToken.Vault, vaultCap: Capability<&{FungibleToken.Receiver}>, collectionCap: Capability<&{NonFungibleToken.CollectionPublic}>) {
@@ -196,11 +181,14 @@ pub contract VoteyAuction {
             }
             
             if self.currentBid != nil {
-                self.releaseBidderTokens()
+                //release escrow back to current bidder since the user is outbid
+                self.transferEscrow(self.currentBid!.paybackVault)
             }
 
-            // Update the auction item
-            self.depositBidTokens(vault: <-bidTokens)
+            //put the bid tokens into escrow
+            self.escrow.deposit(from: <-bidTokens)
+            
+            //make a bid struct with information on where to put tokens if you are outbid or where to transfer nft to if you win
             self.currentBid=Bid(
                 nftCollection:collectionCap,
                 paybackVault:vaultCap
@@ -210,8 +198,7 @@ pub contract VoteyAuction {
         }
 
         destroy() {
-            self.returnOwnerNFT(token: <-self.withdrawNFT())
-            self.releaseBidderTokens()
+            self.returnAuctionItemToOwner()
             destroy self.escrow
             destroy self.items
         }
@@ -243,13 +230,13 @@ pub contract VoteyAuction {
 
         // addTokenToauctionItems adds an NFT to the auction items and sets the meta data
         // for the auction item
-        pub fun addTokenToAuctionItems(token: @NonFungibleToken.NFT, minimumBidIncrement: UFix64, auctionLengthInBlocks: UInt64, startPrice: UFix64, collectionCap: Capability<&{NonFungibleToken.CollectionPublic}>, vaultCap: Capability<&{FungibleToken.Receiver}>) {
+        pub fun addTokenToAuctionItems(tokens: @{UInt64:NonFungibleToken.NFT}, minimumBidIncrement: UFix64, auctionLengthInBlocks: UInt64, startPrice: UFix64, collectionCap: Capability<&{NonFungibleToken.CollectionPublic}>, vaultCap: Capability<&{FungibleToken.Receiver}>) {
              VoteyAuction.totalAuctions = VoteyAuction.totalAuctions + UInt64(1)
              var id=VoteyAuction.totalAuctions 
  
             // create a new auction items resource container
             let item <- create AuctionItem(
-                NFT: <-token,
+                nfts: <-tokens,
                 minimumBidIncrement: minimumBidIncrement,
                 auctionStartBlock: getCurrentBlock().height,
                 auctionLengthInBlocks: auctionLengthInBlocks,

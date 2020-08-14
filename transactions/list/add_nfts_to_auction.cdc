@@ -9,6 +9,7 @@ import NonFungibleToken from 0x01cf0e2f2f715450
 import FungibleToken from 0xee82856bf20e2aa6
 import DemoToken from 0x179b6b1cb6755e31
 import VoteyAuction from 0xe03daebed8ca0615
+import Rocks from 0xf3fcd2c1a78f5eee
 
 // Contract Deployment:
 // Acct 1 - 0x01cf0e2f2f715450 - onflow/NonFungibleToken.cdc
@@ -41,9 +42,10 @@ transaction {
             // and move it into the transaction's context
             let NFT <- accountCollectionRef.withdraw(withdrawID: id)
 
+        
             // list the token for sale by moving it into the sale resource
             auctionCollectionRef.addTokenToAuctionItems(
-                token: <-NFT,
+                tokens: <- { UInt64(1): <- NFT},
                 minimumBidIncrement: UFix64(5),
                 auctionLengthInBlocks: UInt64(2),
                 startPrice: UFix64(10),
