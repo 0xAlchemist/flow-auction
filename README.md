@@ -6,6 +6,16 @@ A composable auction contract with a custom fungible and non-fungible token for 
 
 This demo is currently available for download and deployment with the Flow CLI and VS Code Extension
 
+### Go Tooling Deployment (Recommended)
+
+1. Ensure Go is [installed on your machine](https://golang.org/dl/) `recommended version 1.13^`
+2. [Install the Flow CLI](https://docs.onflow.org/docs/cli) and VS Code Extension
+3. Run `$ git clone https://github.com/0xAlchemist/votey-auction` in a terminal window
+4. Change to the project directory `cd votey-auction`
+5. Rename `flow.sample.json` to `flow.json`: `$ mv flow.sample.json flow.json`
+6. In a seperate terminal run `flow emulator start -v`
+6. Run `$ go run run.go`
+
 ### VS Code Deployment Instructions
 
 1. Start the Flow Emulator and ensure you have 4 accounts created
