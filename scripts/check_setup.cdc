@@ -76,13 +76,13 @@ pub fun main() {
     let account4NFTCapability = account4.getCapability(/public/RockCollection)!
 
     // borrow references from the capabilities
-    let account1NFTRef = account1NFTCapability.borrow<&{Rocks.PublicCollectionMethods}>()
+    let account1NFTRef = account1NFTCapability.borrow<&{NonFungibleToken.CollectionPublic}>()
                         ?? panic("unable to borrow a reference to NFT collection for Account 1")
-    let account2NFTRef = account2NFTCapability.borrow<&{Rocks.PublicCollectionMethods}>()
+    let account2NFTRef = account2NFTCapability.borrow<&{NonFungibleToken.CollectionPublic}>()
                         ?? panic("unable to borrow a reference to NFT collection for Account 2")
-    let account3NFTRef = account3NFTCapability.borrow<&{Rocks.PublicCollectionMethods}>()
+    let account3NFTRef = account3NFTCapability.borrow<&{NonFungibleToken.CollectionPublic}>()
                         ?? panic("unable to borrow a reference to NFT collection for Account 3")
-    let account4NFTRef = account4NFTCapability.borrow<&{Rocks.PublicCollectionMethods}>()
+    let account4NFTRef = account4NFTCapability.borrow<&{NonFungibleToken.CollectionPublic}>()
                         ?? panic("unable to borrow a reference to NFT collection for Account 4")
 
     // print both collections as arrays of ids

@@ -17,8 +17,8 @@ transaction {
     // reference to the buyer's NFT collection where they
     // will store the bought NFT
 
-    let vaultCap: Capability<&AnyResource{FungibleToken.Receiver}>
-    let collectionCap: Capability<&AnyResource{NonFungibleToken.CollectionPublic}> 
+    let vaultCap: Capability<&{FungibleToken.Receiver}>
+    let collectionCap: Capability<&{NonFungibleToken.CollectionPublic}> 
     // Vault that will hold the tokens that will be used
     // to buy the NFT
     let temporaryVault: @FungibleToken.Vault
@@ -29,7 +29,7 @@ transaction {
         self.collectionCap = account.getCapability<&NonFungibleToken.Collection{NonFungibleToken.CollectionPublic}>(/public/RockCollection) 
             ?? panic("Unable to borrow a reference to the NFT collection")
 
-        self.vaultCap = account.getCapability<&AnyResource{FungibleToken.Receiver}>(/public/DemoTokenReceiver) 
+        self.vaultCap = account.getCapability<&{FungibleToken.Receiver}>(/public/DemoTokenReceiver) 
             ?? panic("Could not find demoVaultCap")
                     
         let vaultRef = account.borrow<&FungibleToken.Vault>(from: /storage/DemoTokenVault)
@@ -45,7 +45,7 @@ transaction {
 
         // get the reference to the seller's sale
         let auctionRef = seller.getCapability(/public/NFTAuction)!
-                         .borrow<&AnyResource{VoteyAuction.AuctionPublic}>()
+                         .borrow<&{VoteyAuction.AuctionPublic}>()
                          ?? panic("Could not borrow seller's sale reference")
 
         auctionRef.placeBid(id: 1, bidTokens: <- self.temporaryVault, vaultCap: self.vaultCap, collectionCap: self.collectionCap)

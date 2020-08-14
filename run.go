@@ -50,6 +50,6 @@ func main() {
 	flow.RunScript("check_sales_listings")
 	flow.SendTransaction("buy/settle", demoToken)
 	flow.SendTransaction("buy/settle", demoToken)
-	flow.SendTransaction("buy/settle", demoToken)
-	flow.RunScript("check_sales_listings")
+	//	flow.SendTransaction("buy/settle", demoToken)
+	//flow.RunScript("check_sales_listings")
 }
