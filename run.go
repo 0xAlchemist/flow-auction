@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/0xAlchemist/go-flow-tooling/tooling"
 	"github.com/onflow/cadence"
@@ -52,33 +52,40 @@ func main() {
 	flow.SendTransactionWithArguments("setup/mint_nfts", rocks, flow.FindAddress(demoToken), cadence.NewInt(10))
 
 	// Check the balances are properly setup for the auction demo
-	flow.RunScript("check_setup")
+	//flow.RunScript("check_setup")
 
 	// Add NFTs to the Auction collection for the DemoToken account
 	flow.SendTransaction("list/add_nfts_to_auction", demoToken)
+
+	flow.RunScript("check_account", flow.FindAddress(nonFungibleToken))
+	flow.RunScript("check_account", flow.FindAddress(rocks))
+	flow.RunScript("check_account", flow.FindAddress(auction))
+	flow.RunScript("check_account", flow.FindAddress(demoToken))
+
+	fmt.Println("Press the Enter Key to continue!")
+	fmt.Scanln() // wai
 
 	// Check the auction sale data for the DemoToken account
 	flow.RunScript("check_sales_listings")
 
 	flow.SendTransaction("buy/bid", rocks)
 
-	flow.RunScript("check_sales_listings")
+	//flow.RunScript("check_sales_listings")
 
-	flow.RunScript("check_setup")
+	//flow.RunScript("check_setup")
 
 	flow.SendTransaction("buy/settle", demoToken)
 	flow.SendTransaction("buy/settle", demoToken)
-	flow.SendTransaction("buy/settle", demoToken)
+	//flow.SendTransaction("buy/settle", demoToken)
 
-	flow.RunScript("check_sales_listings")
+	//flow.RunScript("check_sales_listings")
 
-	flow.RunScript("check_setup")
+	//flow.RunScript("check_setup")
 
 	flow.RunScript("check_account", flow.FindAddress(nonFungibleToken))
 	flow.RunScript("check_account", flow.FindAddress(rocks))
 	flow.RunScript("check_account", flow.FindAddress(auction))
-	res := flow.RunScriptReturns("check_account", flow.FindAddress(demoToken))
-	log.Printf("Result %s", res)
+	flow.RunScript("check_account", flow.FindAddress(demoToken))
 
 	// this should panic - "auction has already completed"
 	// flow.SendTransaction("buy/bid", rocks)
