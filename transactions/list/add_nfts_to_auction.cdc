@@ -42,10 +42,9 @@ transaction {
             // and move it into the transaction's context
             let NFT <- accountCollectionRef.withdraw(withdrawID: id)
 
-        
             // list the token for sale by moving it into the sale resource
             auctionCollectionRef.addTokenToAuctionItems(
-                tokens: <- { UInt64(1): <- NFT},
+                tokens: <- { id: <- NFT},
                 minimumBidIncrement: UFix64(5),
                 auctionLengthInBlocks: UInt64(2),
                 startPrice: UFix64(10),
