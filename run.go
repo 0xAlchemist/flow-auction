@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/0xAlchemist/go-flow-tooling/tooling"
+	"github.com/onflow/cadence"
 )
 
 const nonFungibleToken = "NonFungibleToken"
@@ -32,9 +33,21 @@ func main() {
 	flow.SendTransaction("setup/create_demotoken_vault", nonFungibleToken)
 	flow.SendTransaction("setup/create_nft_collection", nonFungibleToken)
 
-	// Mint DemoTokens for each account
-	flow.SendTransaction("setup/mint_nfts", rocks)
-	flow.SendTransaction("setup/mint_demotokens", demoToken)
+	// set up the demotoken minter for the demoTokenAccount
+	flow.SendTransaction("setup/create_demotoken_minter", demoToken)
+
+	tokensToMint, err := cadence.NewUFix64("100.0")
+	if err != nil {
+		panic(err)
+	}
+
+	flow.SendTransactionWithArguments("setup/mint_demotoken", demoToken, flow.FindAddress(rocks), tokensToMint)
+	flow.SendTransactionWithArguments("setup/mint_demotoken", demoToken, flow.FindAddress(demoToken), tokensToMint)
+	flow.SendTransactionWithArguments("setup/mint_demotoken", demoToken, flow.FindAddress(auction), tokensToMint)
+	flow.SendTransactionWithArguments("setup/mint_demotoken", demoToken, flow.FindAddress(nonFungibleToken), tokensToMint)
+
+	//mint 10 rock nfts into demoTokens collection
+	flow.SendTransactionWithArguments("setup/mint_nfts", rocks, flow.FindAddress(demoToken), cadence.NewInt(10))
 
 	// Check the balances are properly setup for the auction demo
 	flow.RunScript("check_setup")
