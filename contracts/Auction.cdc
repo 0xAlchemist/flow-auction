@@ -30,27 +30,41 @@ pub contract VoteyAuction {
     // AuctionItem contains the Resources and metadata for a single auction
     pub resource AuctionItem {
         
-        // Resources
+        //The Item that is sold at this auction
         pub(set) var NFT: @NonFungibleToken.NFT?
+
+        //This is the escrow vault that holds the tokens for the current largest bid
         pub let bidVault: @FungibleToken.Vault
 
-        // Auction Settings
+        //Should an auction know about its Id? It has to in order to send good events. But Then it is hard to move it to 
+        //another collection? Or should this be a pub(set) var?
         pub let auctionID: UInt64
+
+        //The minimum increment for a bid. This is an english auction style system where bids increase
         pub let minimumBidIncrement: UFix64
+
+        //the block this auction should start at
+        pub(set) var auctionStartBlock: UInt64
+
+        //The length in blocks for this auction
         pub let auctionLengthInBlocks: UInt64
+
+        pub(set) var auctionCompleted: Bool
 
         // Auction State
         pub(set) var startPrice: UFix64
         pub(set) var currentPrice: UFix64
-        pub(set) var auctionStartBlock: UInt64
-        pub(set) var auctionCompleted: Bool
 
-        // Recipient's Receiver Capabilities
+        //the capability that points to the resource wher  you want the NFT transfered to if you win this bid. 
         pub(set) var recipientCollectionCap: Capability<&{NonFungibleToken.CollectionPublic}>
+
+        //the capablity to send the escrow bidVault to if you are outbid
         pub(set) var recipientVaultCap: Capability<&{FungibleToken.Receiver}>?
 
-        // Owner's Receiver Capabilities
+        //the capability for the owner of the NFT to return the item to if the auction is cancelled
         pub let ownerCollectionCap: Capability<&{NonFungibleToken.CollectionPublic}>
+
+        //the capability to pay the owner of the item when the auction is done
         pub let ownerVaultCap: Capability<&{FungibleToken.Receiver}>
 
         init(
@@ -80,24 +94,17 @@ pub contract VoteyAuction {
             self.ownerVaultCap = ownerVaultCap
         }
 
-        // depositBidTokens deposits the bidder's tokens into the AuctionItem's Vault
-        pub fun depositBidTokens(vault: @FungibleToken.Vault) {
-            self.bidVault.deposit(from: <-vault)
-        }
-
-        // withdrawNFT removes the NFT from the AuctionItem and returns it to the caller
-        pub fun withdrawNFT(): @NonFungibleToken.NFT {
-            let NFT <- self.NFT <- nil
-            return <- NFT!
-        }
+        
         
         // sendNFT sends the NFT to the Collection belonging to the provided Capability
         access(contract) fun sendNFT(_ capability: Capability<&{NonFungibleToken.CollectionPublic}>) {
             // borrow a reference to the owner's NFT receiver
             if let collectionRef = capability.borrow() {
-                let NFT <- self.withdrawNFT()
+
+                let NFT <- self.NFT <- nil
                 // deposit the token into the owner's collection
-                collectionRef.deposit(token: <-NFT)
+                //TODO: What if does not exist?
+                collectionRef.deposit(token: <-NFT!)
             } else {
                 log("sendNFT(): unable to borrow collection ref")
                 log(capability)
@@ -215,7 +222,7 @@ pub contract VoteyAuction {
             }
 
             // Update the auction item
-            self.depositBidTokens(vault: <-bidTokens)
+            self.bidVault.deposit(from: <-bidTokens)
 
             self.recipientVaultCap = vaultCap
 
