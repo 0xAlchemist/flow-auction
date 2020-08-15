@@ -13,12 +13,25 @@ import VoteyAuction from 0xe03daebed8ca0615
 // Acct 2 - 0x179b6b1cb6755e31 - demo-token.cdc
 // Acct 3 - 0xf3fcd2c1a78f5eee - rocks.cdc
 // Acct 4 - 0xe03daebed8ca0615 - auction.cdc
+pub struct AddressStatus {
 
-pub fun main(address:Address) {
+  pub(set) var address:Address
+  pub(set) var balance: UFix64
+  pub(set) var rocks: [UInt64]
+  pub(set) var auctions: {UInt64: UFix64}
+  init (_ address:Address) {
+    self.address=address
+    self.balance= UFix64(0)
+    self.rocks= []
+    self.auctions ={}
+  }
+}
+
+pub fun main(address:Address):AddressStatus {
     // get the accounts' public address objects
     let account = getAccount(address)
-
-   log("=====================")
+    let status= AddressStatus(address)
+    log("=====================")
     log("Check account")
     log(account)
     
@@ -26,6 +39,7 @@ pub fun main(address:Address) {
         if let demoTokens= demoTokenCapability.borrow<&{FungibleToken.Balance}>() {
           log("Balance of DemoTokens")
           log(demoTokens.balance)
+          status.balance=demoTokens.balance
         }
     }
 
@@ -33,6 +47,7 @@ pub fun main(address:Address) {
        if let rocks= rocksCap.borrow<&{NonFungibleToken.CollectionPublic}>()  {
            log("Rocks in collection") 
            log(rocks.getIDs())
+           status.rocks=rocks.getIDs()
        }
     }
    
@@ -41,6 +56,7 @@ pub fun main(address:Address) {
         if let auctions = auctionCap.borrow<&{VoteyAuction.AuctionPublic}>() {
           log("Items up for auction")
           log(auctions.getAuctionPrices())
+          status.auctions=auctions.getAuctionPrices()
         } else {
           log("No items for sale 1")
         }
@@ -48,5 +64,6 @@ pub fun main(address:Address) {
         log("No items for sale 2")
     } 
     log("=====================")
+    return status
 
 }

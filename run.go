@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/0xAlchemist/go-flow-tooling/tooling"
 	"github.com/onflow/cadence"
 )
@@ -75,7 +77,8 @@ func main() {
 	flow.RunScript("check_account", flow.FindAddress(nonFungibleToken))
 	flow.RunScript("check_account", flow.FindAddress(rocks))
 	flow.RunScript("check_account", flow.FindAddress(auction))
-	flow.RunScript("check_account", flow.FindAddress(demoToken))
+	res := flow.RunScriptReturns("check_account", flow.FindAddress(demoToken))
+	log.Printf("Result %s", res)
 
 	// this should panic - "auction has already completed"
 	// flow.SendTransaction("buy/bid", rocks)
