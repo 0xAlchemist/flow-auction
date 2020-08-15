@@ -72,6 +72,11 @@ func main() {
 
 	flow.RunScript("check_setup")
 
+	flow.RunScript("check_account", flow.FindAddress(nonFungibleToken))
+	flow.RunScript("check_account", flow.FindAddress(rocks))
+	flow.RunScript("check_account", flow.FindAddress(auction))
+	flow.RunScript("check_account", flow.FindAddress(demoToken))
+
 	// this should panic - "auction has already completed"
 	// flow.SendTransaction("buy/bid", rocks)
 }
